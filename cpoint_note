@@ -1,0 +1,63 @@
+using System;
+using System.IO;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using CsvHelper;
+using System.Globalization;
+
+class Program
+{
+    private static readonly string apiUrl = "https://api.costpoint.com/endpoint"; // Update with correct API URL
+    private static readonly string tokenUrl = "https://api.costpoint.com/oauth/token"; // Update with the correct token URL
+
+    static async Task Main(string[] args)
+    {
+        var token = await GetAccessToken();
+        var data = await GetCostpointData(token);
+        WriteDataToCsv(data);
+    }
+
+    static async Task<string> GetAccessToken()
+    {
+        using (HttpClient client = new HttpClient())
+        {
+            var values = new Dictionary<string, string>
+            {
+                { "client_id", "your_client_id" },
+                { "client_secret", "your_client_secret" },
+                { "grant_type", "client_credentials" }
+            };
+
+            var content = new FormUrlEncodedContent(values);
+            var response = await client.PostAsync(tokenUrl, content);
+            var json = await response.Content.ReadAsStringAsync();
+            dynamic result = JsonConvert.DeserializeObject(json);
+            return result.access_token;
+        }
+    }
+
+    static async Task<dynamic> GetCostpointData(string token)
+    {
+        using (HttpClient client = new HttpClient())
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            var response = await client.GetAsync(apiUrl);
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject(json);
+        }
+    }
+
+    static void WriteDataToCsv(dynamic data)
+    {
+        using (var writer = new StreamWriter("data.csv"))
+        using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+        {
+            // Example writing logic (adapt to the structure of your JSON data)
+            foreach (var item in data)
+            {
+                csv.WriteRecord(item);
+            }
+        }
+    }
+}
